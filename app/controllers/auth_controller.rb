@@ -1,6 +1,6 @@
 class AuthController < ApplicationController
+  before_filter :authenticate_user_from_token!, except: [:access_token]
   before_filter :authenticate_user!, :except => [:access_token]
-  skip_before_filter :verify_authenticity_token, :only => [:access_token]
 
   def welcome
     render :text => "Hiya! #{current_user.first_name} #{current_user.last_name}"
@@ -8,7 +8,7 @@ class AuthController < ApplicationController
 
   def authorize
     AccessGrant.prune!
-    access_grant = current_user.access_grants.create({:client => application, :state => params[:state]}, :without_protection => true)
+    access_grant = current_user.access_grants.create!({:client => application, :state => params[:state]}, :without_protection => true)
     redirect_to access_grant.redirect_uri_for(params[:redirect_uri])
   end
 
@@ -36,14 +36,16 @@ class AuthController < ApplicationController
 
   def user
     hash = {
-      :provider => 'josh_id',
+      :provider => 'formation',
       :id => current_user.id.to_s,
       :info => {
-         :email      => current_user.email,
+        :email      => current_user.email,
+        :first_name => current_user.first_name,
+        :last_name  => current_user.last_name,
+        :image => current_user.image
+
       },
       :extra => {
-         :first_name => current_user.first_name,
-         :last_name  => current_user.last_name
       }
     }
 
@@ -63,6 +65,19 @@ class AuthController < ApplicationController
   end
 
   protected
+
+  def authenticate_user_from_token!
+    oauth_token = params[:oauth_token].presence
+    user = oauth_token &&
+      User.joins(:access_grants).where(["access_grants.access_token = ? AND
+                                        (access_grants.access_token_expires_at
+                                        IS NULL OR
+                                        access_grants.access_token_expires_at > ?)",
+                                        oauth_token.to_s, Time.now]).first
+    if user
+      sign_in user
+    end
+  end
 
   def application
     @application ||= Client.find_by_app_id(params[:client_id])

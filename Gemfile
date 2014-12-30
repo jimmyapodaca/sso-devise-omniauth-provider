@@ -1,7 +1,7 @@
 source 'http://rubygems.org'
 
-gem 'rails', '3.2.8'
-gem 'sqlite3'
+gem 'rails', '3.2.21'
+gem 'pg'
 
 # asset pipeline
 group :assets do
@@ -15,3 +15,9 @@ gem 'jquery-rails'
 # gems for omniauth and devise
 gem 'devise'
 gem 'omniauth'
+gem 'omniauth-google-oauth2'
+
+
+group :development do
+  gem 'annotate'
+end
